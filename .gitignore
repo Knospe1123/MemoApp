@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 .vercel
+
+.env
+prisma/dev.db
+prisma/dev.db-journal
