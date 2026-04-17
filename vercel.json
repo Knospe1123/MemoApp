@@ -3,10 +3,5 @@
   "framework": "vite",
   "installCommand": "npm install",
   "buildCommand": "prisma migrate deploy && prisma generate && vite build",
-  "outputDirectory": "dist",
-  "functions": {
-    "api/[...path].js": {
-      "maxDuration": 30
-    }
-  }
+  "outputDirectory": "dist"
 }
