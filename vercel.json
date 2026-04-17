@@ -5,7 +5,7 @@
   "buildCommand": "prisma migrate deploy && prisma generate && vite build",
   "outputDirectory": "dist",
   "functions": {
-    "api/[...path].mjs": {
+    "api/[...path].js": {
       "maxDuration": 30
     }
   }
