@@ -12,7 +12,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "db:deploy": "prisma migrate deploy",
+    "db:up": "docker compose up -d"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -23,7 +25,8 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "serverless-http": "^3.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
