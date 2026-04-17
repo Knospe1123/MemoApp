@@ -1,6 +1,3 @@
-import 'dotenv/config'
-import serverless from 'serverless-http'
-import { createApp } from '../../server/app.mjs'
+import handler from '../handler.js'
 
-const app = createApp()
-export default serverless(app)
+export default handler
