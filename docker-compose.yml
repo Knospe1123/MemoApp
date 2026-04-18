@@ -1,9 +1,14 @@
 services:
-  postgres:
+  db:
     image: postgres:16-alpine
     ports:
       - '5432:5432'
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: memoapp
+      POSTGRES_USER: memo
+      POSTGRES_PASSWORD: memo
+      POSTGRES_DB: memo
+    volumes:
+      - memo_pg_data:/var/lib/postgresql/data
+
+volumes:
+  memo_pg_data:

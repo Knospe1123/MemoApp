@@ -1,81 +1,71 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { AuthPanel } from './AuthPanel'
+import { apiJson } from './api'
 import './App.css'
-import { apiJson } from './api.js'
 
-function mapNoteFromServer(note) {
+function mapMemoFromServer(memo) {
   return {
-    id: note.id,
-    title: note.title ?? '',
-    content: note.content ?? '',
-    updatedAt: new Date(note.updatedAt).getTime(),
+    ...memo,
+    updatedAt: new Date(memo.updatedAt).getTime(),
     isEditing: false,
   }
 }
 
 function App() {
   const [user, setUser] = useState(null)
-  const [bootstrapping, setBootstrapping] = useState(true)
-  const [authMode, setAuthMode] = useState('login')
-  const [authEmail, setAuthEmail] = useState('')
-  const [authPassword, setAuthPassword] = useState('')
-  const [authError, setAuthError] = useState('')
-  const [authSubmitting, setAuthSubmitting] = useState(false)
-
+  const [authLoading, setAuthLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [notes, setNotes] = useState([])
+  const [notesLoading, setNotesLoading] = useState(false)
   const [lastCreatedId, setLastCreatedId] = useState(null)
   const textareaRefs = useRef({})
-
-  const loadNotes = useCallback(async () => {
-    const { notes: rows } = await apiJson('/api/notes')
-    setNotes(rows.map((n) => ({ ...mapNoteFromServer(n) })))
-  }, [])
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        const { user: u } = await apiJson('/api/auth/me')
-        if (cancelled) return
-        setUser(u)
-        if (u) await loadNotes()
+        const data = await apiJson('/api/auth/me')
+        if (!cancelled && data.user) setUser(data.user)
       } catch {
         if (!cancelled) setUser(null)
       } finally {
-        if (!cancelled) setBootstrapping(false)
+        if (!cancelled) setAuthLoading(false)
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [loadNotes])
+  }, [])
 
-  const handleAuthSubmit = async (event) => {
-    event.preventDefault()
-    setAuthError('')
-    setAuthSubmitting(true)
-    try {
-      const path =
-        authMode === 'register' ? '/api/auth/register' : '/api/auth/login'
-      const { user: u } = await apiJson(path, {
-        method: 'POST',
-        body: { email: authEmail, password: authPassword },
-      })
-      setUser(u)
-      setAuthPassword('')
-      await loadNotes()
-    } catch (e) {
-      setAuthError(e.message)
-    } finally {
-      setAuthSubmitting(false)
+  useEffect(() => {
+    if (!user) {
+      setNotes([])
+      return
     }
-  }
+    let cancelled = false
+    ;(async () => {
+      setNotesLoading(true)
+      try {
+        const { memos } = await apiJson('/api/memoes')
+        if (!cancelled) {
+          setNotes(memos.map((m) => mapMemoFromServer(m)))
+        }
+      } catch {
+        if (!cancelled) setNotes([])
+      } finally {
+        if (!cancelled) setNotesLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user])
 
-  const handleLogout = async () => {
+  const logout = async () => {
     try {
       await apiJson('/api/auth/logout', { method: 'POST' })
     } catch {
-      // ignore
+      /* ignore */
     }
     setUser(null)
     setNotes([])
@@ -83,26 +73,30 @@ function App() {
   }
 
   const createNote = async () => {
-    const { note } = await apiJson('/api/notes', {
-      method: 'POST',
-      body: { title: '', content: '' },
-    })
-    const mapped = { ...mapNoteFromServer(note), isEditing: true }
-    setNotes((prev) => [mapped, ...prev])
-    setLastCreatedId(mapped.id)
+    try {
+      const { memo } = await apiJson('/api/memoes', {
+        method: 'POST',
+        body: JSON.stringify({ title: '', content: '' }),
+      })
+      const mapped = { ...mapMemoFromServer(memo), isEditing: true }
+      setNotes((prev) => [mapped, ...prev])
+      setLastCreatedId(memo.id)
+    } catch (err) {
+      alert(err.message)
+    }
   }
 
   const updateNote = (id, key, value) => {
-    setNotes((prev) =>
-      prev.map((note) =>
+    setNotes((prevNotes) =>
+      prevNotes.map((note) =>
         note.id === id ? { ...note, [key]: value, updatedAt: Date.now() } : note,
       ),
     )
   }
 
   const enterEditMode = (id) => {
-    setNotes((prev) =>
-      prev.map((note) =>
+    setNotes((prevNotes) =>
+      prevNotes.map((note) =>
         note.id === id ? { ...note, isEditing: true } : note,
       ),
     )
@@ -112,28 +106,41 @@ function App() {
   const saveNote = async (id) => {
     const note = notes.find((n) => n.id === id)
     if (!note) return
-    const { note: updated } = await apiJson(`/api/notes/${id}`, {
-      method: 'PATCH',
-      body: { title: note.title, content: note.content },
-    })
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === id
-          ? { ...mapNoteFromServer(updated), isEditing: false }
-          : n,
-      ),
-    )
+    try {
+      const { memo } = await apiJson(`/api/memoes/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: note.title ?? '',
+          content: note.content ?? '',
+        }),
+      })
+      setNotes((prevNotes) =>
+        prevNotes.map((n) =>
+          n.id === id
+            ? { ...mapMemoFromServer(memo), isEditing: false }
+            : n,
+        ),
+      )
+    } catch (err) {
+      alert(err.message)
+    }
   }
 
   const deleteNote = async (id) => {
-    await apiJson(`/api/notes/${id}`, { method: 'DELETE' })
-    setNotes((prev) => prev.filter((n) => n.id !== id))
+    try {
+      await apiJson(`/api/memoes/${id}`, { method: 'DELETE' })
+      setNotes((prevNotes) => prevNotes.filter((note) => note.id !== id))
+    } catch (err) {
+      alert(err.message)
+    }
   }
 
   useEffect(() => {
     if (!lastCreatedId) return
-    const el = textareaRefs.current[lastCreatedId]
-    if (el) el.focus()
+
+    const targetTextarea = textareaRefs.current[lastCreatedId]
+    if (targetTextarea) targetTextarea.focus()
+
     setLastCreatedId(null)
   }, [notes, lastCreatedId])
 
@@ -150,10 +157,10 @@ function App() {
       minute: '2-digit',
     }).format(new Date(timestamp))
 
-  if (bootstrapping) {
+  if (authLoading) {
     return (
       <main className="memo-app">
-        <p className="loading-text">불러오는 중...</p>
+        <p className="loading-message">불러오는 중…</p>
       </main>
     )
   }
@@ -161,71 +168,7 @@ function App() {
   if (!user) {
     return (
       <main className="memo-app">
-        <section className="auth-panel memo-panel">
-          <header className="auth-header">
-            <h1>메모 관리</h1>
-            <p>로그인 후 메모를 저장할 수 있습니다.</p>
-          </header>
-          <form className="auth-form" onSubmit={handleAuthSubmit}>
-            <div className="auth-tabs">
-              <button
-                type="button"
-                className={authMode === 'login' ? 'tab active' : 'tab'}
-                onClick={() => {
-                  setAuthMode('login')
-                  setAuthError('')
-                }}
-              >
-                로그인
-              </button>
-              <button
-                type="button"
-                className={authMode === 'register' ? 'tab active' : 'tab'}
-                onClick={() => {
-                  setAuthMode('register')
-                  setAuthError('')
-                }}
-              >
-                회원가입
-              </button>
-            </div>
-            <label className="auth-label">
-              이메일
-              <input
-                type="email"
-                autoComplete="email"
-                value={authEmail}
-                onChange={(e) => setAuthEmail(e.target.value)}
-                required
-              />
-            </label>
-            <label className="auth-label">
-              비밀번호
-              <input
-                type="password"
-                autoComplete={
-                  authMode === 'register' ? 'new-password' : 'current-password'
-                }
-                value={authPassword}
-                onChange={(e) => setAuthPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </label>
-            {authError ? (
-              <p className="auth-error" role="alert">
-                {authError}
-              </p>
-            ) : null}
-            <button
-              type="submit"
-              className="primary-btn auth-submit"
-              disabled={authSubmitting}
-            >
-              {authMode === 'register' ? '가입하기' : '로그인'}
-            </button>
-          </form>
-        </section>
+        <AuthPanel onLoggedIn={setUser} />
       </main>
     )
   }
@@ -239,12 +182,9 @@ function App() {
             <p>최근 작성한 메모를 확인하고 관리하세요.</p>
           </div>
           <div className="header-actions">
-            <span className="user-email" title={user.email}>
+            <span className="header-user" title={user.email}>
               {user.email}
             </span>
-            <button type="button" className="ghost-btn" onClick={handleLogout}>
-              로그아웃
-            </button>
             <input
               id="memo-search"
               type="text"
@@ -255,11 +195,16 @@ function App() {
             <button type="button" className="primary-btn" onClick={createNote}>
               새 메모
             </button>
+            <button type="button" className="ghost-btn" onClick={logout}>
+              로그아웃
+            </button>
           </div>
         </header>
 
         <section className="memo-list">
-          {filteredNotes.length === 0 && (
+          {notesLoading && <p className="loading-inline">메모를 불러오는 중…</p>}
+
+          {!notesLoading && filteredNotes.length === 0 && (
             <p className="empty-message">
               검색 결과가 없습니다. 새 메모를 작성해보세요.
             </p>
