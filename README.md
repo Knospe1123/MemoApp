@@ -19,7 +19,7 @@ React(Vite) 메모 앱 + Prisma(PostgreSQL) + 회원가입/로그인/로그아�
    - `DATABASE_URL` — Vercel Postgres, Neon 등 **PostgreSQL** 연결 문자열
    - `JWT_SECRET` — 32자 이상 무작위 문자열
    - `CLIENT_ORIGIN` — 프로덕션 URL (예: `https://your-app.vercel.app`). Preview에서도 쓰려면 배포 URL과 맞추거나, 서버는 `*.vercel.app`을 CORS로 허용합니다.
-3. 빌드는 `vercel.json`의 `buildCommand`로 `prisma migrate deploy`까지 실행됩니다.
+3. 빌드는 `npm run vercel-build`(`vercel.json`의 `buildCommand`)로 마이그레이션을 적용합니다. 이전에 실패한 기록(P3009)이 있으면 `migrate resolve --rolled-back` 후 한 번 더 `deploy`를 시도합니다. 그래도 실패하면 Neon SQL에서 `"Memo"`, `"User"` 테이블을 삭제한 뒤 재배포하세요.
 
 ## 스크립트
 
