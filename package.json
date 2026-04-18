@@ -8,6 +8,7 @@
     "dev:client": "vite",
     "dev:server": "node server/index.mjs",
     "build": "prisma generate && vite build",
+    "vercel-build": "node scripts/vercel-build.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "db:push": "prisma db push",
