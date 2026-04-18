@@ -1,3 +1,7 @@
+-- Clean up from a previously failed/partial apply (safe if tables are missing)
+DROP TABLE IF EXISTS "Memo" CASCADE;
+DROP TABLE IF EXISTS "User" CASCADE;
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
