@@ -14,6 +14,7 @@ function mapMemoFromServer(memo) {
 function App() {
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const [authError, setAuthError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [notes, setNotes] = useState([])
   const [notesLoading, setNotesLoading] = useState(false)
@@ -23,13 +24,21 @@ function App() {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
+      setAuthError('')
       try {
         const data = await apiJson('/api/auth/me')
         if (!cancelled && data.user) setUser(data.user)
-      } catch {
-        if (!cancelled) setUser(null)
+      } catch (err) {
+        if (!cancelled) {
+          setUser(null)
+          if (err.name === 'AbortError') {
+            setAuthError(
+              '서버와 연결이 지연되고 있습니다. 네트워크를 확인하거나 잠시 후 새로고침해 주세요.',
+            )
+          }
+        }
       } finally {
-        if (!cancelled) setAuthLoading(false)
+        setAuthLoading(false)
       }
     })()
     return () => {
@@ -168,6 +177,7 @@ function App() {
   if (!user) {
     return (
       <main className="memo-app">
+        {authError && <p className="auth-banner">{authError}</p>}
         <AuthPanel onLoggedIn={setUser} />
       </main>
     )
